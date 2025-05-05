@@ -795,7 +795,7 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
   // Function to configure license request
   const configureLicenseRequest = (licenseUrl, jwtToken) => {
     console.log("[DRM] Setting license URL:", licenseUrl);
-    playbackConfig.licenseUri = licenseUrl;
+    playbackConfig.licenseUrl = licenseUrl;
 
     playbackConfig.drm = {
       servers: {
@@ -812,65 +812,65 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
       },
     };
 
-    if (jwtToken) {
-      console.log("[DRM] Adding JWT token to license request headers");
-      playbackConfig.licenseRequestHandler = function (networkReqInfo) {
-        // Set required headers for Widevine license request
-        networkReqInfo.headers = {
-          ...networkReqInfo.headers,
-          "Content-Type": "application/octet-stream",
-          "bcov-auth": jwtToken,
-          Origin: window.location.origin,
-          Referer: window.location.href,
-          "X-Requested-With": "Shaka Player",
-        };
+    // if (jwtToken) {
+    //   console.log("[DRM] Adding JWT token to license request headers");
+    //   playbackConfig.licenseRequestHandler = function (networkReqInfo) {
+    //     // Set required headers for Widevine license request
+    //     networkReqInfo.headers = {
+    //       ...networkReqInfo.headers,
+    //       "Content-Type": "application/octet-stream",
+    //       "bcov-auth": jwtToken,
+    //       Origin: window.location.origin,
+    //       Referer: window.location.href,
+    //       "X-Requested-With": "Shaka Player",
+    //     };
 
-        // Ensure the request is made with credentials
-        networkReqInfo.withCredentials = true;
+    //     // Ensure the request is made with credentials
+    //     networkReqInfo.withCredentials = true;
 
-        // Log the complete request info for debugging
-        console.log("[DRM] License request configuration:", {
-          url: networkReqInfo.url,
-          method: networkReqInfo.method,
-          headers: networkReqInfo.headers,
-          withCredentials: networkReqInfo.withCredentials,
-          body: networkReqInfo.body,
-        });
+    //     // Log the complete request info for debugging
+    //     console.log("[DRM] License request configuration:", {
+    //       url: networkReqInfo.url,
+    //       method: networkReqInfo.method,
+    //       headers: networkReqInfo.headers,
+    //       withCredentials: networkReqInfo.withCredentials,
+    //       body: networkReqInfo.body,
+    //     });
 
-        // Add error handling for the request
-        networkReqInfo.onError = function (error) {
-          console.log("[DRM] License request failed:", {
-            error: error,
-            status: error.status,
-            statusText: error.statusText,
-            responseText: error.responseText,
-          });
+    //     // Add error handling for the request
+    //     networkReqInfo.onError = function (error) {
+    //       console.log("[DRM] License request failed:", {
+    //         error: error,
+    //         status: error.status,
+    //         statusText: error.statusText,
+    //         responseText: error.responseText,
+    //       });
 
-          // Broadcast the error to sender
-          broadcastEventToSender(playbackEvents.ERROR, {
-            errorCode: 6012,
-            errorMessage:
-              "License request failed: " +
-              (error.statusText || "Unknown error"),
-            drmError: true,
-          });
-        };
+    //       // Broadcast the error to sender
+    //       broadcastEventToSender(playbackEvents.ERROR, {
+    //         errorCode: 6012,
+    //         errorMessage:
+    //           "License request failed: " +
+    //           (error.statusText || "Unknown error"),
+    //         drmError: true,
+    //       });
+    //     };
 
-        networkReqInfo.onSuccess = function (response) {
-          console.log("[DRM] License request successful:", {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
-          });
-        };
-      };
+    //     networkReqInfo.onSuccess = function (response) {
+    //       console.log("[DRM] License request successful:", {
+    //         status: response.status,
+    //         statusText: response.statusText,
+    //         headers: response.headers,
+    //       });
+    //     };
+    //   };
 
-      // Add license handler to process the response
-      playbackConfig.licenseHandler = function (licenseData) {
-        console.log("[DRM] Processing license data");
-        return licenseData;
-      };
-    }
+    //   // Add license handler to process the response
+    //   playbackConfig.licenseHandler = function (licenseData) {
+    //     console.log("[DRM] Processing license data");
+    //     return licenseData;
+    //   };
+    // }
   };
 
   // Check if this is a DRM stream
@@ -959,7 +959,7 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
   }
 
   console.log("[DRM] Final playback configuration:", {
-    licenseUri: playbackConfig.licenseUri,
+    licenseUrl: playbackConfig.licenseUrl,
     hasLicenseRequestHandler: !!playbackConfig.licenseRequestHandler,
   });
 
