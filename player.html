@@ -6,52 +6,24 @@
       src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js">
   </script>
   <script type="text/javascript"
-      src="gql/index.js">
+      src="./gql/index.js">
   </script>
-   <script type="text/javascript"
-   src="languageMap.js">
-</script>
   <script type="text/javascript"
-      src="gql/watchItem.js">
+      src="./languageMap.js">
   </script>
-  <style>
-    .loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-    .loader {
-      width: 48px;
-      height: 48px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
+  <script type="text/javascript"
+      src="./gql/watchItem.js">
+  </script>
+  <link rel="stylesheet" type="text/css" href="./player.css">
 </head>
 <body>
-  <div class="loading-screen">
-    <div class="loader"></div>
-  </div>
   <cast-media-player id="player"></cast-media-player>
   <!-- Custom UI Media Element (*Not recommended) -->
   <!-- TODO: Uncomment the block below if have to use Custom UI -->
   <!-- <video class="castMediaElement" id="player"></video> -->
   <!-- Custom UI Media Element End -->
   <script type="text/javascript"
-      src="player.js">
+      src="./player.js">
   </script>
 </body>
 </html>
