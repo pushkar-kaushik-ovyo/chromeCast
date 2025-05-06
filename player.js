@@ -663,18 +663,6 @@ playerManager.setMediaPlaybackInfoHandler(async (loadRequest, playbackConfig) =>
     console.log("[DRM] Setting license URL:", licenseUrl);
     playbackConfig.licenseUrl = licenseUrl;
 
-    playbackConfig.drm = {
-      servers: {
-        "com.widevine.alpha": licenseUrl,
-      },
-      advanced: {
-        "com.widevine.alpha": {
-          videoRobustness: "HW_SECURE_ALL",
-          audioRobustness: "HW_SECURE_ALL",
-        },
-      },
-    };
-
     if (jwtToken) {
       console.log("[DRM] Adding JWT token to license request headers");
       playbackConfig.licenseRequestHandler = function (networkReqInfo) {
@@ -741,19 +729,14 @@ playerManager.setMediaPlaybackInfoHandler(async (loadRequest, playbackConfig) =>
 
   if (isDRMStream) {
     if (loadRequest.media.customData && loadRequest.media.customData.licenseUrl) {
-      console.log("[DRM] Using custom license URL:", loadRequest.media.customData.licenseUrl);
       configureLicenseRequest(loadRequest.media.customData.licenseUrl, loadRequest.media.customData.jwtToken);
     } else if (loadRequest.media && loadRequest.media.contentId) {
-      console.log("[DRM] Extracting license URL from manifest");
-      console.log("[DRM] Manifest URL:", loadRequest.media.contentId);
-
       const extractLicenseUrl = async (manifestUrl) => {
         try {
           console.log("[DRM] Fetching manifest file...");
           const response = await fetch(manifestUrl);
           const mpdText = await response.text();
-          console.log("[DRM] Manifest content length:", mpdText.length);
-
+        
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(mpdText, "application/xml");
 
@@ -1012,56 +995,9 @@ playbackConfig.licenseHandler = function(licenseData) {
  *
  * @param {cast.framework.NetworkRequestInfo} networkReqInfo HTTP(s) Request/Response information.
  */
-playbackConfig.licenseRequestHandler = function (networkReqInfo) {
-  // Set default method if not provided
-  networkReqInfo.method = networkReqInfo.method || 'POST';
-  
-  // Set headers
-  networkReqInfo.headers = {
-    "Content-Type": "application/octet-stream",
-    "bcov-auth": jwtToken,
-    "Origin": window.location.origin,
-    "Referer": window.location.href
-  };
-
-  // Set credentials
-  networkReqInfo.withCredentials = false;
-
-  // Log request info (excluding body for security)
-  console.log("[DRM] License request configuration:", {
-    url: networkReqInfo.url,
-    method: networkReqInfo.method,
-    headers: networkReqInfo.headers,
-    withCredentials: networkReqInfo.withCredentials
-  });
-
-  // Add error handling
-  networkReqInfo.onError = function (error) {
-    console.error("[DRM] License request failed:", {
-      error: error,
-      status: error.status,
-      statusText: error.statusText,
-      responseText: error.responseText
-    });
-
-    // Broadcast error to sender
-    broadcastEventToSender(playbackEvents.ERROR, {
-      errorCode: 6012,
-      errorMessage: "License request failed: " + (error.statusText || "Unknown error"),
-      drmError: true
-    });
-  };
-
-  // Add success handling
-  networkReqInfo.onSuccess = function (response) {
-    console.log("[DRM] License request successful:", {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers
-    });
-  };
-
-  return networkReqInfo;
+playbackConfig.licenseRequestHandler = function(networkReqInfo) {
+  const customData = playerManager.getMediaInformation().customData;
+  networkReqInfo.headers["bcov-auth"] = customData.jwtToken;
 };
 /**
  * Handler to process manifest data. The handler is passed the manifest, and returns the modified manifest.
