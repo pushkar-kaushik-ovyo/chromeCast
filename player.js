@@ -655,7 +655,6 @@ playerManager.addEventListener(cast.framework.events.EventType.ERROR,
   });
 /*** Media Events End ***/
 /*** DRM ***/
-// Update playback config licenseUrl according to provided value in load request.
 playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
   if (loadRequest.media.customData && loadRequest.media.customData.licenseUrl) {
     playbackConfig.licenseUrl = loadRequest.media.customData.licenseUrl;
@@ -715,9 +714,9 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
             },
             streaming: {
               failureCallback: function (error) {
-                console.error("[DRM] License request failed:", error);
                 if (error.code === 6007) {
                   console.error("[DRM] Aborted request, retrying...", error);
+                  // Retry logic if needed
                 }
               }
             }
@@ -729,13 +728,6 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
               "bcov-auth": loadRequest.media.customData.jwtToken
             };
           }
-
-          // Add additional headers that might be required
-          playbackConfig.drm.licenseRequestHeaders = {
-            ...playbackConfig.drm.licenseRequestHeaders,
-            "Origin": window.location.origin,
-            "Referer": window.location.href
-          };
         } else {
           console.log("[DRM] Warning: No Widevine license URL found in the manifest");
         }
