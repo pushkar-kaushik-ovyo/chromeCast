@@ -655,148 +655,183 @@ playerManager.addEventListener(cast.framework.events.EventType.ERROR,
   });
 /*** Media Events End ***/
 /*** DRM ***/
+// Update playback config licenseUrl according to provided value in load request.
 playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
-  if (loadRequest.media.customData && loadRequest.media.customData.licenseUrl) {
-    playbackConfig.licenseUrl = loadRequest.media.customData.licenseUrl;
-  } else if (loadRequest.media && loadRequest.media.contentId) {
-    console.log("[DRM] Extracting license URL from manifest");
-    console.log("[DRM] Manifest URL:", loadRequest.media.contentId);
+  // Access the message data
+  const msg = loadRequest;
+  console.log("[DRM] Full Load Request:", JSON.stringify(msg, null, 2));
 
-    // Extract license URL from the manifest
-    const extractLicenseUrl = async (manifestUrl) => {
-      try {
-        console.log("[DRM] Fetching manifest file...");
-        const response = await fetch(manifestUrl);
-        const mpdText = await response.text();
-        console.log("[DRM] Manifest content length:", mpdText.length);
+  // Function to configure license request
+  const configureLicenseRequest = (licenseUrl, jwtToken) => {
+    console.log("[DRM] Setting license URL:", licenseUrl);
+    playbackConfig.licenseUrl = licenseUrl;
 
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(mpdText, "application/xml");
-
-        // Look specifically for Widevine ContentProtection
-        const widevineProtection = Array.from(
-          xmlDoc.getElementsByTagName("ContentProtection")
-        ).find(
-          (elem) =>
-            elem.getAttribute("schemeIdUri") ===
-            "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-        );
-
-        if (widevineProtection) {
-          const licenseUrl = widevineProtection.getAttribute(
-            "bc:licenseAcquisitionUrl"
-          );
-          console.log("[DRM] Found Widevine license URL:", licenseUrl);
-          return licenseUrl;
-        }
-
-        console.log("[DRM] No Widevine license URL found in manifest");
-        return null;
-      } catch (error) {
-        console.log("[DRM] Error extracting license URL:", error);
-        return null;
-      }
+    playbackConfig.drm = {
+      servers: {
+        "com.widevine.alpha": licenseUrl,
+      },
+      streaming: {
+        failureCallback: function (error) {
+          if (error.code === 6007) {
+            // OPERATION_ABORTED
+            console.error("[DRM] Aborted request, retrying...", error);
+            // Retry logic if needed
+          }
+        },
+      },
     };
 
-    // Get the manifest URL from contentId
-    const manifestUrl = loadRequest.media.contentId;
+    if (jwtToken) {
+      console.log("[DRM] Adding JWT token to license request headers");
+      playbackConfig.licenseRequestHandler = function (networkReqInfo) {
+        // Set required headers for Widevine license request
+        networkReqInfo.headers = {
+          ...networkReqInfo.headers,
+          "Content-Type": "application/octet-stream",
+          "bcov-auth": jwtToken,
+          Origin: window.location.origin,
+          Referer: window.location.href,
+          "X-Requested-With": "Shaka Player",
+        };
 
-    // Extract and set the license URL
-    extractLicenseUrl(manifestUrl)
-      .then((licenseUrl) => {
-        if (licenseUrl) {
-          console.log("[DRM] Setting license URL:", licenseUrl);
-          
-          // Configure DRM settings
-          playbackConfig.drm = {
-            servers: {
-              "com.widevine.alpha": licenseUrl
-            }
-          };
+        // Ensure the request is made with credentials
+        networkReqInfo.withCredentials = true;
 
-          // Configure streaming settings
-          playbackConfig.streaming = {
-            failureCallback: function (error) {
-              if (error.code === 6007) {
-                console.error("[DRM] Aborted request, retrying...", error);
-                // Retry logic if needed
-              }
-            },
-            allowMediaSourceRecoveries: true,
-            alwaysStreamText: false,
-            avoidEvictionOnQuotaExceededError: false,
-            bufferBehind: 5,
-            bufferingGoal: 30,
-            clearDecodingCache: false,
-            crossBoundaryStrategy: "keep",
-            disableAudioPrefetch: false,
-            disableTextPrefetch: false,
-            disableVideoPrefetch: false,
-            dontChooseCodecs: false,
-            durationBackoff: 1,
-            evictionGoal: 1,
-            gapDetectionThreshold: 0.5,
-            gapJumpTimerTime: 0.25,
-            gapPadding: 0,
-            ignoreTextStreamFailures: false,
-            inaccurateManifestTolerance: 2,
-            infiniteLiveStreamDuration: false,
-            liveSync: {
-              dynamicTargetLatency: {
-                enabled: false,
-                maxAttempts: 10,
-                maxLatency: 4,
-                minLatency: 1,
-                rebufferIncrement: 0.5,
-                stabilityThreshold: 60,
-              },
-              enabled: false,
-              maxPlaybackRate: 1.1,
-              minPlaybackRate: 0.95,
-              panicMode: false,
-              panicThreshold: 60,
-              targetLatency: 0.5,
-              targetLatencyTolerance: 0.5,
-            },
-            loadTimeout: 30,
-            lowLatencyMode: false,
-            maxDisabledTime: 30,
-            minTimeBetweenRecoveries: 5,
-            observeQualityChanges: false,
-            preferNativeDash: false,
-            preferNativeHls: true,
-            preloadNextUrlWindow: 30,
-            rebufferingGoal: 5,
-            safeSeekEndOffset: 0,
-            safeSeekOffset: 5,
-            segmentPrefetchLimit: 1,
-            shouldFixTimestampOffset: false,
-            stallEnabled: true,
-            stallSkip: 0.1,
-            stallThreshold: 1,
-            startAtSegmentBoundary: false,
-            updateIntervalSeconds: 1,
-            useNativeHlsOnSafari: true,
-            useNativeHlsForFairPlay: false,
-            vodDynamicPlaybackRate: false,
-            vodDynamicPlaybackRateBufferRatio: 0.5,
-            vodDynamicPlaybackRateLowBufferRate: 0.95,
-          };
+        // Log the complete request info for debugging
+        console.log("[DRM] License request configuration:", {
+          url: networkReqInfo.url,
+          method: networkReqInfo.method,
+          headers: networkReqInfo.headers,
+          withCredentials: networkReqInfo.withCredentials,
+          body: networkReqInfo.body,
+        });
 
-          // Add authentication headers if needed
-          if (loadRequest.media.customData && loadRequest.media.customData.jwtToken) {
-            playbackConfig.drm.licenseRequestHeaders = {
-              "bcov-auth": loadRequest.media.customData.jwtToken
-            };
+        // Add error handling for the request
+        networkReqInfo.onError = function (error) {
+          console.log("[DRM] License request failed:", {
+            error: error,
+            status: error.status,
+            statusText: error.statusText,
+            responseText: error.responseText,
+          });
+
+          // Broadcast the error to sender
+          broadcastEventToSender(playbackEvents.ERROR, {
+            errorCode: 6012,
+            errorMessage:
+              "License request failed: " +
+              (error.statusText || "Unknown error"),
+            drmError: true,
+          });
+        };
+
+        networkReqInfo.onSuccess = function (response) {
+          console.log("[DRM] License request successful:", {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+          });
+        };
+      };
+
+      // Add license handler to process the response
+      playbackConfig.licenseHandler = function (licenseData) {
+        console.log("[DRM] Processing license data");
+        return licenseData;
+      };
+    }
+  };
+
+  // Check if this is a DRM stream
+  const isDRMStream = loadRequest.media.contentId.includes("/bccenc/");
+  console.log("[DRM] Is DRM stream:", isDRMStream);
+
+  if (isDRMStream) {
+    // Check for custom license URL first
+    if (
+      loadRequest.media.customData &&
+      loadRequest.media.customData.licenseUrl
+    ) {
+      console.log(
+        "[DRM] Using custom license URL:",
+        loadRequest.media.customData.licenseUrl
+      );
+      configureLicenseRequest(
+        loadRequest.media.customData.licenseUrl,
+        loadRequest.media.customData.jwtToken
+      );
+    }
+    // If no custom licenseUrl, check if this is a Brightcove DRM stream
+    else if (loadRequest.media && loadRequest.media.contentId) {
+      console.log("[DRM] Extracting license URL from manifest");
+      console.log("[DRM] Manifest URL:", loadRequest.media.contentId);
+
+      // Extract license URL from the manifest
+      const extractLicenseUrl = async (manifestUrl) => {
+        try {
+          console.log("[DRM] Fetching manifest file...");
+          const response = await fetch(manifestUrl);
+          const mpdText = await response.text();
+          console.log("[DRM] Manifest content length:", mpdText.length);
+
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(mpdText, "application/xml");
+
+          // Look specifically for Widevine ContentProtection
+          const widevineProtection = Array.from(
+            xmlDoc.getElementsByTagName("ContentProtection")
+          ).find(
+            (elem) =>
+              elem.getAttribute("schemeIdUri") ===
+              "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+          );
+
+          if (widevineProtection) {
+            const licenseUrl = widevineProtection.getAttribute(
+              "bc:licenseAcquisitionUrl"
+            );
+            console.log("[DRM] Found Widevine license URL:", licenseUrl);
+            return licenseUrl;
           }
-        } else {
-          console.log("[DRM] Warning: No Widevine license URL found in the manifest");
+
+          console.log("[DRM] No Widevine license URL found in manifest");
+          return null;
+        } catch (error) {
+          console.log("[DRM] Error extracting license URL:", error);
+          return null;
         }
-      })
-      .catch((error) => {
-        console.log("[DRM] Error in license URL extraction process:", error);
-      });
+      };
+
+      // Get the manifest URL from contentId
+      const manifestUrl = loadRequest.media.contentId;
+
+      // Extract and set the license URL
+      extractLicenseUrl(manifestUrl)
+        .then((licenseUrl) => {
+          if (licenseUrl) {
+            configureLicenseRequest(
+              licenseUrl,
+              loadRequest.media.customData?.jwtToken
+            );
+          } else {
+            console.log(
+              "[DRM] Warning: No Widevine license URL found in the manifest"
+            );
+          }
+        })
+        .catch((error) => {
+          console.log("[DRM] Error in license URL extraction process:", error);
+        });
+    }
+  } else {
+    console.log("[DRM] Clear stream detected, no DRM configuration needed");
   }
+
+  console.log("[DRM] Final playback configuration:", {
+    licenseUrl: playbackConfig.licenseUrl,
+    hasLicenseRequestHandler: !!playbackConfig.licenseRequestHandler,
+  });
+
   return playbackConfig;
 });
 /*** DRM End ***/
