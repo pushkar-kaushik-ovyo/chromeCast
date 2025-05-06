@@ -707,38 +707,42 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
       .then((licenseUrl) => {
         if (licenseUrl) {
           console.log("[DRM] Setting license URL:", licenseUrl);
-          playbackConfig.licenseUrl = licenseUrl;
-      
+          
+          // Configure DRM settings
           playbackConfig.drm = {
             servers: {
-              "com.widevine.alpha": licenseUrl,
+              "com.widevine.alpha": licenseUrl
             },
             streaming: {
               failureCallback: function (error) {
+                console.error("[DRM] License request failed:", error);
                 if (error.code === 6007) {
-                  // OPERATION_ABORTED
                   console.error("[DRM] Aborted request, retrying...", error);
-                  // Retry logic if needed
                 }
-              },
-            },
+              }
+            }
+          };
+
+          // Add authentication headers if needed
+          if (loadRequest.media.customData && loadRequest.media.customData.jwtToken) {
+            playbackConfig.drm.licenseRequestHeaders = {
+              "bcov-auth": loadRequest.media.customData.jwtToken
+            };
+          }
+
+          // Add additional headers that might be required
+          playbackConfig.drm.licenseRequestHeaders = {
+            ...playbackConfig.drm.licenseRequestHeaders,
+            "Origin": window.location.origin,
+            "Referer": window.location.href
           };
         } else {
-          console.log(
-            "[DRM] Warning: No Widevine license URL found in the manifest"
-          );
+          console.log("[DRM] Warning: No Widevine license URL found in the manifest");
         }
       })
       .catch((error) => {
         console.log("[DRM] Error in license URL extraction process:", error);
       });
-  }
-   // Add authentication headers if needed
-   if (loadRequest.media.customData && loadRequest.media.customData.jwtToken) {
-    playbackConfig.drm = playbackConfig.drm || {};
-    playbackConfig.drm.licenseRequestHeaders = {
-      "bcov-auth": loadRequest.media.customData.jwtToken
-    };
   }
   return playbackConfig;
 });
