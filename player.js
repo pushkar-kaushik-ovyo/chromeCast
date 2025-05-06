@@ -711,15 +711,76 @@ playerManager.setMediaPlaybackInfoHandler((loadRequest, playbackConfig) => {
           playbackConfig.drm = {
             servers: {
               "com.widevine.alpha": licenseUrl
-            },
-            streaming: {
-              failureCallback: function (error) {
-                if (error.code === 6007) {
-                  console.error("[DRM] Aborted request, retrying...", error);
-                  // Retry logic if needed
-                }
-              }
             }
+          };
+
+          // Configure streaming settings
+          playbackConfig.streaming = {
+            failureCallback: function (error) {
+              if (error.code === 6007) {
+                console.error("[DRM] Aborted request, retrying...", error);
+                // Retry logic if needed
+              }
+            },
+            allowMediaSourceRecoveries: true,
+            alwaysStreamText: false,
+            avoidEvictionOnQuotaExceededError: false,
+            bufferBehind: 5,
+            bufferingGoal: 30,
+            clearDecodingCache: false,
+            crossBoundaryStrategy: "keep",
+            disableAudioPrefetch: false,
+            disableTextPrefetch: false,
+            disableVideoPrefetch: false,
+            dontChooseCodecs: false,
+            durationBackoff: 1,
+            evictionGoal: 1,
+            gapDetectionThreshold: 0.5,
+            gapJumpTimerTime: 0.25,
+            gapPadding: 0,
+            ignoreTextStreamFailures: false,
+            inaccurateManifestTolerance: 2,
+            infiniteLiveStreamDuration: false,
+            liveSync: {
+              dynamicTargetLatency: {
+                enabled: false,
+                maxAttempts: 10,
+                maxLatency: 4,
+                minLatency: 1,
+                rebufferIncrement: 0.5,
+                stabilityThreshold: 60,
+              },
+              enabled: false,
+              maxPlaybackRate: 1.1,
+              minPlaybackRate: 0.95,
+              panicMode: false,
+              panicThreshold: 60,
+              targetLatency: 0.5,
+              targetLatencyTolerance: 0.5,
+            },
+            loadTimeout: 30,
+            lowLatencyMode: false,
+            maxDisabledTime: 30,
+            minTimeBetweenRecoveries: 5,
+            observeQualityChanges: false,
+            preferNativeDash: false,
+            preferNativeHls: true,
+            preloadNextUrlWindow: 30,
+            rebufferingGoal: 5,
+            safeSeekEndOffset: 0,
+            safeSeekOffset: 5,
+            segmentPrefetchLimit: 1,
+            shouldFixTimestampOffset: false,
+            stallEnabled: true,
+            stallSkip: 0.1,
+            stallThreshold: 1,
+            startAtSegmentBoundary: false,
+            updateIntervalSeconds: 1,
+            useNativeHlsOnSafari: true,
+            useNativeHlsForFairPlay: false,
+            vodDynamicPlaybackRate: false,
+            vodDynamicPlaybackRateBufferRatio: 0.5,
+            vodDynamicPlaybackRateLowBufferRate: 0.95,
           };
 
           // Add authentication headers if needed
