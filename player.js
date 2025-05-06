@@ -678,44 +678,55 @@ playerManager.setMediaPlaybackInfoHandler(async (loadRequest, playbackConfig) =>
     if (jwtToken) {
       console.log("[DRM] Adding JWT token to license request headers");
       playbackConfig.licenseRequestHandler = function (networkReqInfo) {
+        // Set default method if not provided
+        networkReqInfo.method = networkReqInfo.method || 'POST';
+        
+        // Set headers
         networkReqInfo.headers = {
           "Content-Type": "application/octet-stream",
           "bcov-auth": jwtToken,
-          Origin: window.location.origin,
-          Referer: window.location.href,
+          "Origin": window.location.origin,
+          "Referer": window.location.href
         };
-        networkReqInfo.withCredentials = true;
 
+        // Set credentials
+        networkReqInfo.withCredentials = false;
+
+        // Log request info (excluding body for security)
         console.log("[DRM] License request configuration:", {
           url: networkReqInfo.url,
           method: networkReqInfo.method,
           headers: networkReqInfo.headers,
-          withCredentials: networkReqInfo.withCredentials,
-          body: networkReqInfo.body,
+          withCredentials: networkReqInfo.withCredentials
         });
 
+        // Add error handling
         networkReqInfo.onError = function (error) {
-          console.log("[DRM] License request failed:", {
+          console.error("[DRM] License request failed:", {
             error: error,
             status: error.status,
             statusText: error.statusText,
-            responseText: error.responseText,
+            responseText: error.responseText
           });
 
+          // Broadcast error to sender
           broadcastEventToSender(playbackEvents.ERROR, {
             errorCode: 6012,
             errorMessage: "License request failed: " + (error.statusText || "Unknown error"),
-            drmError: true,
+            drmError: true
           });
         };
 
+        // Add success handling
         networkReqInfo.onSuccess = function (response) {
           console.log("[DRM] License request successful:", {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers,
+            headers: response.headers
           });
         };
+
+        return networkReqInfo;
       };
 
       playbackConfig.licenseHandler = function (licenseData) {
@@ -1001,9 +1012,56 @@ playbackConfig.licenseHandler = function(licenseData) {
  *
  * @param {cast.framework.NetworkRequestInfo} networkReqInfo HTTP(s) Request/Response information.
  */
-playbackConfig.licenseRequestHandler = function(networkReqInfo) {
-  const customData = playerManager.getMediaInformation().customData;
-  networkReqInfo.headers["bcov-auth"] = customData.jwtToken;
+playbackConfig.licenseRequestHandler = function (networkReqInfo) {
+  // Set default method if not provided
+  networkReqInfo.method = networkReqInfo.method || 'POST';
+  
+  // Set headers
+  networkReqInfo.headers = {
+    "Content-Type": "application/octet-stream",
+    "bcov-auth": jwtToken,
+    "Origin": window.location.origin,
+    "Referer": window.location.href
+  };
+
+  // Set credentials
+  networkReqInfo.withCredentials = false;
+
+  // Log request info (excluding body for security)
+  console.log("[DRM] License request configuration:", {
+    url: networkReqInfo.url,
+    method: networkReqInfo.method,
+    headers: networkReqInfo.headers,
+    withCredentials: networkReqInfo.withCredentials
+  });
+
+  // Add error handling
+  networkReqInfo.onError = function (error) {
+    console.error("[DRM] License request failed:", {
+      error: error,
+      status: error.status,
+      statusText: error.statusText,
+      responseText: error.responseText
+    });
+
+    // Broadcast error to sender
+    broadcastEventToSender(playbackEvents.ERROR, {
+      errorCode: 6012,
+      errorMessage: "License request failed: " + (error.statusText || "Unknown error"),
+      drmError: true
+    });
+  };
+
+  // Add success handling
+  networkReqInfo.onSuccess = function (response) {
+    console.log("[DRM] License request successful:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  };
+
+  return networkReqInfo;
 };
 /**
  * Handler to process manifest data. The handler is passed the manifest, and returns the modified manifest.
